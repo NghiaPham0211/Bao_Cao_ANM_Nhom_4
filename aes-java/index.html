@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mã Hoá AES</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a237e, #283593, #1565c0, #1e88e5);
+            color: white;
+            text-align: center;
+            padding: 28px 20px;
+        }
+        .header h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,.3); }
+        .header p  { margin-top: 7px; opacity: .85; font-size: .92rem; }
+
+        .container {
+            max-width: 1280px;
+            margin: 22px auto;
+            padding: 0 16px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 18px;
+        }
+        .container-2 {
+            max-width: 1280px;
+            margin: 0 auto 22px;
+            padding: 0 16px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+        @media (max-width: 900px) {
+            .container   { grid-template-columns: 1fr; }
+            .container-2 { grid-template-columns: 1fr; }
+        }
+
+        .card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+        .card-header { background: #1565c0; color: white; padding: 11px 16px; font-weight: 600; font-size: .92rem; letter-spacing: .4px; }
+        .card-body   { padding: 16px; }
+
+        label { display: block; font-size: .8rem; font-weight: 600; color: #37474f; margin: 10px 0 4px; }
+        label:first-child { margin-top: 0; }
+
+        input[type="text"], select, textarea {
+            width: 100%; padding: 8px 10px;
+            border: 1px solid #cfd8dc; border-radius: 5px;
+            font-size: .86rem; background: #f9fafb; color: #263238;
+            transition: border-color .2s; font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: #1565c0; background: white;
+        }
+        textarea { resize: vertical; min-height: 82px; font-family: 'Consolas', monospace; font-size: .81rem; }
+        textarea[readonly] { background: #f1f3f4; color: #455a64; }
+
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+        button {
+            padding: 9px 12px; border: none; border-radius: 5px;
+            font-size: .86rem; font-weight: 600; cursor: pointer;
+            transition: opacity .18s, transform .12s;
+        }
+        button:hover  { opacity: .87; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+
+        .btn-blue   { background: linear-gradient(135deg, #1565c0, #1e88e5); color: white; flex: 1; }
+        .btn-red    { background: linear-gradient(135deg, #c62828, #e53935); color: white; flex: 1; }
+        .btn-green  { background: linear-gradient(135deg, #2e7d32, #43a047); color: white; width: 100%; display: block; margin-top: 10px; }
+        .btn-full   { width: 100%; display: block; margin-top: 10px; background: linear-gradient(135deg, #1565c0, #1e88e5); color: white; }
+        .btn-purple { width: 100%; display: block; margin-top: 10px; background: linear-gradient(135deg, #6a1b9a, #8e24aa); color: white; }
+
+        hr { border: none; border-top: 1px solid #eceff1; margin: 13px 0 6px; }
+        .or-text { font-size: .78rem; color: #90a4ae; }
+
+        .status {
+            border-radius: 5px; padding: 7px 11px;
+            font-size: .8rem; margin-top: 10px; display: none; word-break: break-all;
+        }
+        .status.ok   { background: #e8f5e9; border: 1px solid #a5d6a7; color: #1b5e20; }
+        .status.err  { background: #ffebee; border: 1px solid #ef9a9a; color: #b71c1c; }
+        .status.info { background: #e3f2fd; border: 1px solid #90caf9; color: #1565c0; }
+
+        .file-drop {
+            border: 2px dashed #90a4ae;
+            border-radius: 6px;
+            padding: 20px 12px;
+            text-align: center;
+            cursor: pointer;
+            background: #f9fafb;
+            color: #546e7a;
+            font-size: .85rem;
+            transition: border-color .2s, background .2s;
+        }
+        .file-drop:hover     { border-color: #1565c0; background: #e3f2fd; color: #1565c0; }
+        .file-drop.drag-over { border-color: #1565c0; background: #e3f2fd; color: #1565c0; }
+        .file-drop.has-file  { border-color: #43a047; background: #f1f8e9; color: #2e7d32; }
+        .file-drop .icon     { font-size: 1.6rem; display: block; margin-bottom: 6px; }
+        .file-drop .hint     { font-size: .74rem; color: #90a4ae; margin-top: 4px; }
+
+        .section-title {
+            max-width: 1280px; margin: 4px auto 12px; padding: 0 16px;
+            font-size: .8rem; font-weight: 700; color: #546e7a;
+            text-transform: uppercase; letter-spacing: .6px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .section-title::before,
+        .section-title::after { content: ''; flex: 1; border-top: 1px solid #cfd8dc; }
+
+        .log-wrap { max-width: 1280px; margin: 0 auto 28px; padding: 0 16px; }
+        .log-card { background: #1a1a2e; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+        .log-head {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 11px 16px; background: #16213e; color: #90caf9;
+            font-weight: 600; font-size: .88rem;
+        }
+        .log-body {
+            padding: 12px 16px; min-height: 64px; max-height: 150px;
+            overflow-y: auto; font-family: 'Consolas', monospace; font-size: .8rem; color: #b0bec5;
+        }
+        .log-entry { margin-bottom: 3px; line-height: 1.5; }
+        .log-entry .t  { color: #546e7a; margin-right: 6px; }
+        .log-entry .ok { color: #81c784; }
+        .log-entry .er { color: #e57373; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Mã Hoá AES</h1>
+    <p>Văn bản: Bước 1 → Bước 2 → Bước 3 &nbsp;|&nbsp; File: Bước 1 → Mã hoá / Giải mã File</p>
+</div>
+
+<!-- PHẦN VĂN BẢN -->
+<div class="container">
+
+    <!-- BƯỚC 1 -->
+    <div class="card">
+        <div class="card-header">BƯỚC 1: CẤU HÌNH KHOÁ</div>
+        <div class="card-body">
+
+            <label>Khoá bí mật (Key)</label>
+            <input type="text" id="key" value="MySecretKey12345" placeholder="Nhập khoá bí mật...">
+
+            <label>Chế độ mã hoá</label>
+            <select id="mode">
+                <option value="CBC">CBC – Cipher Block Chaining</option>
+                <option value="ECB">ECB – Electronic Codebook</option>
+                <option value="CFB">CFB – Cipher Feedback</option>
+                <option value="OFB">OFB – Output Feedback</option>
+            </select>
+
+            <label>Kích thước khoá</label>
+            <select id="keySize">
+                <option value="128">AES-128 (128-bit)</option>
+                <option value="192">AES-192 (192-bit)</option>
+                <option value="256">AES-256 (256-bit)</option>
+            </select>
+
+            <div class="btn-row">
+                <button class="btn-blue" onclick="saveConfig()">Lưu cấu hình</button>
+                <button class="btn-red"  onclick="resetAll()">Đặt lại khoá</button>
+            </div>
+
+            <hr><span class="or-text">hoặc</span>
+            <button class="btn-green" onclick="genKey()">Tạo khoá ngẫu nhiên</button>
+
+            <div id="cfg-st" class="status"></div>
+        </div>
+    </div>
+
+    <!-- BƯỚC 2 -->
+    <div class="card">
+        <div class="card-header">BƯỚC 2: MÃ HOÁ VĂN BẢN</div>
+        <div class="card-body">
+
+            <label>Văn bản cần mã hoá</label>
+            <textarea id="plaintext" placeholder="Nhập văn bản cần mã hoá..."></textarea>
+
+            <button class="btn-full" onclick="encrypt()">Mã hoá dữ liệu</button>
+
+            <label>Bản mã (Base64)</label>
+            <textarea id="ciphertext" readonly placeholder="Chưa có dữ liệu mã hoá"></textarea>
+
+            <label>IV (Véc-tơ khởi tạo)</label>
+            <input type="text" id="iv-out" readonly placeholder="Chưa có IV">
+
+            <div id="enc-st" class="status"></div>
+        </div>
+    </div>
+
+    <!-- BƯỚC 3 -->
+    <div class="card">
+        <div class="card-header">BƯỚC 3: GIẢI MÃ VĂN BẢN</div>
+        <div class="card-body">
+
+            <label>Bản mã (Base64)</label>
+            <textarea id="dec-ct" placeholder="Dán bản mã vào đây..."></textarea>
+
+            <label>IV (bỏ qua nếu dùng ECB)</label>
+            <input type="text" id="dec-iv" placeholder="Dán IV vào đây...">
+
+            <button class="btn-full" onclick="decrypt()">Giải mã dữ liệu</button>
+
+            <label>Kết quả giải mã</label>
+            <textarea id="decrypted" readonly placeholder="Chưa có kết quả"></textarea>
+
+            <div id="dec-st" class="status"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- PHẦN FILE -->
+<div class="section-title">Mã hoá / Giải mã File</div>
+
+<div class="container-2">
+
+    <!-- MÃ HOÁ FILE -->
+    <div class="card">
+        <div class="card-header" style="background: linear-gradient(135deg,#2e7d32,#388e3c);">MÃ HOÁ FILE</div>
+        <div class="card-body">
+
+            <label>Chọn file cần mã hoá</label>
+            <div class="file-drop" id="enc-drop"
+                 onclick="document.getElementById('enc-file').click()"
+                 ondragover="handleDragOver(event,'enc-drop')"
+                 ondragleave="handleDragLeave('enc-drop')"
+                 ondrop="handleDrop(event,'enc-file','enc')">
+                <input type="file" id="enc-file" style="display:none" onchange="updateFileLabel('enc')">
+                <span class="icon">📄</span>
+                <span id="enc-file-label">Nhấn hoặc kéo file vào đây...</span>
+                <span class="hint">Hỗ trợ mọi loại file (txt, pdf, jpg, zip...)</span>
+            </div>
+
+            <p style="font-size:.75rem;color:#78909c;margin:8px 0 0">
+                Sử dụng cấu hình khoá đã lưu ở Bước 1 (chế độ + kích thước khoá được nhúng vào file)
+            </p>
+
+            <button class="btn-green" onclick="encryptFile()">🔒 Mã hoá và Tải xuống (.enc)</button>
+            <div id="file-enc-st" class="status"></div>
+        </div>
+    </div>
+
+    <!-- GIẢI MÃ FILE -->
+    <div class="card">
+        <div class="card-header" style="background: linear-gradient(135deg,#6a1b9a,#7b1fa2);">GIẢI MÃ FILE</div>
+        <div class="card-body">
+
+            <label>Chọn file .enc cần giải mã</label>
+            <div class="file-drop" id="dec-drop"
+                 onclick="document.getElementById('dec-file').click()"
+                 ondragover="handleDragOver(event,'dec-drop')"
+                 ondragleave="handleDragLeave('dec-drop')"
+                 ondrop="handleDrop(event,'dec-file','dec')">
+                <input type="file" id="dec-file" style="display:none" accept=".enc" onchange="updateFileLabel('dec')">
+                <span class="icon">🔓</span>
+                <span id="dec-file-label">Nhấn hoặc kéo file .enc vào đây...</span>
+                <span class="hint">Chỉ chấp nhận file được mã hoá bởi công cụ này</span>
+            </div>
+
+            <label>Khoá bí mật</label>
+            <input type="text" id="file-dec-key" placeholder="Nhập khoá bí mật để giải mã...">
+            <p style="font-size:.75rem;color:#78909c;margin:4px 0 0">Chế độ và kích thước khoá được đọc từ nội dung file (tự động)</p>
+
+            <button class="btn-purple" onclick="decryptFile()">🔓 Giải mã và Tải xuống</button>
+            <div id="file-dec-st" class="status"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- LOG -->
+<div class="log-wrap">
+    <div class="log-card">
+        <div class="log-head">
+            <span>Lịch sử hoạt động</span>
+            <button onclick="clearAll()"
+                style="background:linear-gradient(135deg,#c62828,#e53935);color:white;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:.8rem;font-weight:600">
+                Xoá toàn bộ dữ liệu
+            </button>
+        </div>
+        <div class="log-body" id="log">
+            <div class="log-entry"><span class="t">--:--:--</span><span>Chưa có hoạt động nào</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let cfg = { key: '', mode: 'CBC', keySize: 128, saved: false };
+
+    function saveConfig() {
+        const key = document.getElementById('key').value.trim();
+        if (!key) { showSt('cfg-st','err','Vui lòng nhập khoá bí mật!'); return; }
+        cfg = { key, mode: document.getElementById('mode').value, keySize: parseInt(document.getElementById('keySize').value), saved: true };
+        showSt('cfg-st','ok', 'Đã lưu: key="' + key.substring(0,8) + '...", mode=' + cfg.mode + ', ' + cfg.keySize + '-bit');
+        log('ok', 'Đã lưu cấu hình: mode=' + cfg.mode + ', keySize=' + cfg.keySize + '-bit');
+        const fdk = document.getElementById('file-dec-key');
+        if (!fdk.value) fdk.value = key;
+    }
+
+    async function genKey() {
+        const keySize = document.getElementById('keySize').value;
+        try {
+            const d = await api('/api/genkey', { keySize });
+            if (d.status === 'success') {
+                document.getElementById('key').value = d.key;
+                log('ok', 'Đã tạo khoá ngẫu nhiên AES-' + keySize);
+            }
+        } catch { log('er', 'Lỗi kết nối máy chủ'); }
+    }
+
+    async function encrypt() {
+        if (!cfg.saved) { showSt('enc-st','err','Vui lòng lưu cấu hình ở Bước 1 trước!'); return; }
+        const pt = document.getElementById('plaintext').value;
+        if (!pt.trim()) { showSt('enc-st','err','Vui lòng nhập văn bản cần mã hoá!'); return; }
+        try {
+            const d = await api('/api/encrypt', { text: pt, key: cfg.key, mode: cfg.mode, keySize: cfg.keySize });
+            if (d.status === 'success') {
+                document.getElementById('ciphertext').value = d.result;
+                document.getElementById('iv-out').value     = d.iv || '(ECB – không dùng IV)';
+                document.getElementById('dec-ct').value     = d.result;
+                document.getElementById('dec-iv').value     = d.iv || '';
+                showSt('enc-st','ok','Mã hoá thành công!');
+                log('ok', 'Mã hoá văn bản thành công (' + cfg.mode + '-' + cfg.keySize + ')');
+            } else {
+                showSt('enc-st','err','Lỗi: ' + d.message);
+                log('er', 'Mã hoá thất bại: ' + d.message);
+            }
+        } catch { showSt('enc-st','err','Không kết nối được máy chủ!'); }
+    }
+
+    async function decrypt() {
+        if (!cfg.saved) { showSt('dec-st','err','Vui lòng lưu cấu hình ở Bước 1 trước!'); return; }
+        const ct = document.getElementById('dec-ct').value.trim();
+        const iv = document.getElementById('dec-iv').value.trim();
+        if (!ct) { showSt('dec-st','err','Vui lòng nhập bản mã!'); return; }
+        try {
+            const d = await api('/api/decrypt', { text: ct, iv, key: cfg.key, mode: cfg.mode, keySize: cfg.keySize });
+            if (d.status === 'success') {
+                document.getElementById('decrypted').value = d.result;
+                showSt('dec-st','ok','Giải mã thành công!');
+                log('ok', 'Giải mã văn bản thành công (' + cfg.mode + '-' + cfg.keySize + ')');
+            } else {
+                showSt('dec-st','err','Lỗi: ' + d.message);
+                log('er', 'Giải mã thất bại: ' + d.message);
+            }
+        } catch { showSt('dec-st','err','Không kết nối được máy chủ!'); }
+    }
+
+    async function encryptFile() {
+        if (!cfg.saved) { showSt('file-enc-st','err','Vui lòng lưu cấu hình ở Bước 1 trước!'); return; }
+        const fileInput = document.getElementById('enc-file');
+        if (!fileInput.files[0]) { showSt('file-enc-st','err','Vui lòng chọn file cần mã hoá!'); return; }
+
+        showSt('file-enc-st','info','Đang mã hoá file... vui lòng chờ');
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('key', cfg.key);
+        formData.append('mode', cfg.mode);
+        formData.append('keySize', cfg.keySize);
+
+        try {
+            const res = await fetch('/api/encrypt-file', { method: 'POST', body: formData });
+            if (res.ok) {
+                const blob = await res.blob();
+                const outName = fileInput.files[0].name + '.enc';
+                triggerDownload(blob, outName);
+                showSt('file-enc-st','ok','Mã hoá thành công! Đã tải xuống: ' + outName);
+                log('ok', 'Mã hoá file: ' + fileInput.files[0].name + ' → ' + outName + ' (' + cfg.mode + '-' + cfg.keySize + ')');
+            } else {
+                const err = await res.json().catch(() => ({ message: 'Lỗi không xác định' }));
+                showSt('file-enc-st','err','Lỗi: ' + err.message);
+                log('er', 'Mã hoá file thất bại: ' + err.message);
+            }
+        } catch (e) {
+            showSt('file-enc-st','err','Không kết nối được máy chủ!');
+            log('er', 'Lỗi kết nối khi mã hoá file');
+        }
+    }
+
+    async function decryptFile() {
+        const fileInput = document.getElementById('dec-file');
+        const key = document.getElementById('file-dec-key').value.trim();
+        if (!fileInput.files[0]) { showSt('file-dec-st','err','Vui lòng chọn file .enc cần giải mã!'); return; }
+        if (!key) { showSt('file-dec-st','err','Vui lòng nhập khoá bí mật!'); return; }
+
+        showSt('file-dec-st','info','Đang giải mã file... vui lòng chờ');
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('key', key);
+
+        try {
+            const res = await fetch('/api/decrypt-file', { method: 'POST', body: formData });
+            if (res.ok) {
+                const blob = await res.blob();
+                let outName = fileInput.files[0].name;
+                if (outName.toLowerCase().endsWith('.enc')) outName = outName.slice(0, -4);
+                triggerDownload(blob, outName);
+                showSt('file-dec-st','ok','Giải mã thành công! Đã tải xuống: ' + outName);
+                log('ok', 'Giải mã file thành công: ' + outName);
+            } else {
+                const err = await res.json().catch(() => ({ message: 'Lỗi không xác định' }));
+                showSt('file-dec-st','err','Lỗi: ' + err.message);
+                log('er', 'Giải mã file thất bại: ' + err.message);
+            }
+        } catch (e) {
+            showSt('file-dec-st','err','Không kết nối được máy chủ!');
+            log('er', 'Lỗi kết nối khi giải mã file');
+        }
+    }
+
+    function updateFileLabel(prefix) {
+        const input = document.getElementById(prefix + '-file');
+        const label = document.getElementById(prefix + '-file-label');
+        const drop  = document.getElementById(prefix + '-drop');
+        if (input.files[0]) {
+            label.textContent = input.files[0].name + '  (' + formatSize(input.files[0].size) + ')';
+            drop.classList.add('has-file');
+        }
+    }
+
+    function handleDragOver(e, dropId) {
+        e.preventDefault();
+        document.getElementById(dropId).classList.add('drag-over');
+    }
+
+    function handleDragLeave(dropId) {
+        document.getElementById(dropId).classList.remove('drag-over');
+    }
+
+    function handleDrop(e, inputId, prefix) {
+        e.preventDefault();
+        handleDragLeave(prefix + '-drop');
+        const files = e.dataTransfer.files;
+        if (!files.length) return;
+        const dt = new DataTransfer();
+        dt.items.add(files[0]);
+        document.getElementById(inputId).files = dt.files;
+        updateFileLabel(prefix);
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function triggerDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function resetAll() {
+        cfg = { key: '', mode: 'CBC', keySize: 128, saved: false };
+        ['key','ciphertext','iv-out','dec-ct','dec-iv','decrypted','plaintext','file-dec-key'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        document.getElementById('mode').value = 'CBC';
+        document.getElementById('keySize').value = '128';
+        ['cfg-st','enc-st','dec-st','file-enc-st','file-dec-st'].forEach(id => document.getElementById(id).style.display = 'none');
+
+        ['enc','dec'].forEach(prefix => {
+            document.getElementById(prefix + '-file').value = '';
+            document.getElementById(prefix + '-file-label').textContent =
+                prefix === 'enc' ? 'Nhấn hoặc kéo file vào đây...' : 'Nhấn hoặc kéo file .enc vào đây...';
+            document.getElementById(prefix + '-drop').classList.remove('has-file','drag-over');
+        });
+
+        log('er', 'Đã đặt lại toàn bộ khoá và dữ liệu');
+    }
+
+    function clearAll() {
+        resetAll();
+        document.getElementById('log').innerHTML = '<div class="log-entry"><span class="t">--:--:--</span><span>Đã xoá toàn bộ dữ liệu</span></div>';
+    }
+
+    async function api(url, data) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(data).toString()
+        });
+        return res.json();
+    }
+
+    function showSt(id, type, msg) {
+        const el = document.getElementById(id);
+        el.className = 'status ' + type;
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function log(type, msg) {
+        const logEl = document.getElementById('log');
+        const now = new Date().toLocaleTimeString('vi-VN');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = '<span class="t">[' + now + ']</span><span class="' + type + '">' + msg + '</span>';
+        if (logEl.children.length === 1 && logEl.children[0].querySelector('.t').textContent === '--:--:--') {
+            logEl.innerHTML = '';
+        }
+        logEl.prepend(entry);
+    }
+</script>
+
+</body>
+</html>
